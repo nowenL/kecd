@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/qbox/ke-base/sdk"
 	"github.com/qbox/ke-base/sdk/proto"
@@ -32,7 +33,7 @@ func Init(config Config, router gin.IRouter) error {
 		Config: config,
 	}
 
-	router.POST("/deploy", deployMgr.Deploy)
+	router.POST("/deploy/:repo", deployMgr.Deploy)
 	return nil
 }
 
@@ -47,22 +48,27 @@ type WebhookData struct {
 const (
 	AppName = "demoapp"
 	SvcName = "demosvc"
-	Image   = "reg.qiniu.com/g57g/demo:"
+	Image   = "reg.qiniu.com/g57g/%s:%s"
 )
 
 func (p *DeployMgr) Deploy(c *gin.Context) {
 	logrus.Info("Start deploy...")
 
 	data := WebhookData{}
+	repo := c.Param("repo")
 	err := c.BindJSON(&data)
 	if err != nil {
 		logrus.Info("Deploy failed: ", err.Error())
 		return
 	}
 
+	imageToDeploy := fmt.Sprintf(Image, repo, data.Tag)
+
 	logrus.Info("===Deploy===")
+	logrus.Info("Repo:", repo)
 	logrus.Info("Tag:", data.Tag)
 	logrus.Info("Digest:", data.Digest)
+	logrus.Info("Image:", imageToDeploy)
 	logrus.Info("============")
 
 	old, err := p.client.MicroService(p.Region).GetService(nil, p.Namespace, AppName, SvcName)
@@ -72,7 +78,7 @@ func (p *DeployMgr) Deploy(c *gin.Context) {
 	}
 
 	newContainerSpec := old.Containers[0]
-	newContainerSpec.Image = Image + data.Tag
+	newContainerSpec.Image = imageToDeploy
 
 	_, err = p.client.MicroService(p.Region).UpgradeService(nil, p.Namespace, AppName, SvcName, proto.MicroServiceUpgradeArgs{
 		ResourceSpec: old.ResourceSpec,
