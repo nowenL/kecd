@@ -30,7 +30,7 @@ var Command = cli.Command{
 			EnvVar: "KECD_NAMESPACE",
 			Name:   "namespace",
 			Usage:  "namespace",
-			Value:  "xq",
+			Value:  "g57g",
 		},
 		cli.StringFlag{
 			EnvVar: "KECD_ACCOUNT",
@@ -42,7 +42,7 @@ var Command = cli.Command{
 			EnvVar: "KECD_PASSWORD",
 			Name:   "password",
 			Usage:  "password",
-			Value:  "",
+			Value:  "123456",
 		},
 	},
 }
@@ -64,7 +64,9 @@ func server(c *cli.Context) (err error) {
 	logrus.Info("===Config===")
 	logrus.Info("Account:", config.Username)
 	logrus.Info("Password:", "******")
+	logrus.Info("Region:", config.Region)
 	logrus.Info("Namespace:", config.Namespace)
+
 	logrus.Info("============")
 
 	return http.ListenAndServe(

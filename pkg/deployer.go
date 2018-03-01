@@ -3,6 +3,7 @@ package pkg
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/qbox/ke-base/sdk"
+	"github.com/qbox/ke-base/sdk/proto"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,9 +36,55 @@ func Init(config Config, router gin.IRouter) error {
 	return nil
 }
 
+type WebhookData struct {
+	EventID   string `json:"eventID"`
+	Namespace string `json:"namespace"`
+	Repo      string `json:"repoName"`
+	Tag       string `json:"tag"`
+	Digest    string `json:"digest"`
+}
+
+const (
+	AppName = "demoapp"
+	SvcName = "demosvc"
+	Image   = "reg.qiniu.com/g57g/demo:"
+)
+
 func (p *DeployMgr) Deploy(c *gin.Context) {
-	logrus.Info("Trigger")
 	logrus.Info("Start deploy...")
+
+	data := WebhookData{}
+	err := c.BindJSON(&data)
+	if err != nil {
+		logrus.Info("Deploy failed: ", err.Error())
+		return
+	}
+
+	logrus.Info("===Deploy===")
+	logrus.Info("Tag:", data.Tag)
+	logrus.Info("Digest:", data.Digest)
+	logrus.Info("============")
+
+	old, err := p.client.MicroService(p.Region).GetService(nil, p.Namespace, AppName, SvcName)
+	if err != nil {
+		logrus.Info("Deploy failed: ", err.Error())
+		return
+	}
+
+	newContainerSpec := old.Containers[0]
+	newContainerSpec.Image = Image + data.Tag
+
+	_, err = p.client.MicroService(p.Region).UpgradeService(nil, p.Namespace, AppName, SvcName, proto.MicroServiceUpgradeArgs{
+		ResourceSpec: old.ResourceSpec,
+		Containers: []proto.Container{
+			newContainerSpec,
+		},
+	})
+
+	if err != nil {
+		logrus.Info("Deploy failed: ", err.Error())
+		return
+	}
 
 	logrus.Info("Deploy done.")
 }
